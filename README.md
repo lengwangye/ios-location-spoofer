@@ -1,58 +1,63 @@
-# IOS Location Spoofer
+# iOS Location Spoofer
 
-Standalone IOS app to spoof GPS location without jailbreaks. Untethered, local, and open source.
+iOS 定位欺骗工具，不需越狱。附带代理模块可直接在 Shadowrocket / Surge / Loon / Quantumult X / Stash 上使用。
 
-> [!NOTE]
-> Update 2026-01-19: Apple has rejected this app from testflight. You must have an Apple developer account to sideload onto your own device.
+## 原理
 
-https://github.com/user-attachments/assets/456d508c-2104-4d10-9458-e58e84b74788
+iPhone 扫描附近 Wi-Fi 热点和基站信息，把 BSSID 列表发给 Apple 定位服务器（`gs-loc.apple.com/clls/wloc`），Apple 回传这些设备对应的 GPS 坐标，iOS 根据这些坐标算出当前位置。
 
-## How it works
+这套工具做的事情就是在这条通信路径上做手脚：
+- **iOS App 版**：自建本地 VPN，跑 Go 写的 MITM 代理，拦截并改写定位回应
+- **代理模块版**：利用 Shadowrocket、Surge 等软件的 HTTPS 解密功能，在流量经过时直接替换坐标数据
 
-I did some research a few years back on how IOS location services worked: <https://github.com/acheong08/apple-corelocation-experiments>
+两种方式都在本机完成，不经过第三方服务器。
 
-TL;DR: iPhone scans for WIFI access points, sends the list of access points to Apple, Apple tells device where those points are, iPhone triangulates. What you can do here is have a VPN that does a Man in the Middle attack and rewrite the response with different values for where the access points are. The device then thinks that is where it is.
+## 方案对比
 
-> MITM and processing are all done on device. No network connections are made by the app. It is safe to use...
+| | iOS App 版 | 代理模块版 |
+|---|---|---|
+| 需要什么 | Apple 开发者账号 + Xcode | 代理软件（小火箭/Surge 等） |
+| 难度 | 需要自己编译签名 | 一键导入 |
+| MITM 方式 | 自建 VPN + Go 代理 | 软件内置 MITM |
+| 适用人群 | 开发者 | 普通用户 |
+| 文件位置 | `GoSpoofer/` `Tunnel/` `App/` | `Shadowrocket/` |
 
-## Building this yourself
+## 代理模块用法
 
-- Go to `./GoSpoofer/` and run `make.sh`
-- Open `./location-spoofer.xcodeproj/` with XCode
-- Select a paid developer account (Required. PacketTunnel is a paid API)
-- Run on iPhone?
+五个平台全部支持一键导入：
 
-## Usage
+| 平台 | 导入链接 |
+|------|---------|
+| Shadowrocket / Surge | [ios-location-spoofer.sgmodule](https://raw.githubusercontent.com/mekos2772/ios-location-spoofer/main/Shadowrocket/ios-location-spoofer.sgmodule) |
+| Loon | [ios-location-spoofer.lnplugin](https://raw.githubusercontent.com/mekos2772/ios-location-spoofer/main/Shadowrocket/ios-location-spoofer.lnplugin) |
+| Quantumult X | [ios-location-spoofer.snippet](https://raw.githubusercontent.com/mekos2772/ios-location-spoofer/main/Shadowrocket/ios-location-spoofer.snippet) |
+| Stash | [ios-location-spoofer.stoverride](https://raw.githubusercontent.com/mekos2772/ios-location-spoofer/main/Shadowrocket/ios-location-spoofer.stoverride) |
 
-1. Open app
-2. Go to "Location"
-3. Enter a GPS coordinate or choose a preset
-4. Go to VPN
-5. Install profile
-6. Connect to VPN
-7. Go to Safari
-8. Go to <http://mitm.it>
-9. Download profile
-10. Go to settings
-11. Enable profile
-12. Go to General > About > Certificate Trust Settings and enable Location Spoofer CA
-13. Turn off and on location services
-14. Go to maps and see it working
+导入步骤：
+1. 开启代理软件的 HTTPS 解密功能，安装并信任 CA 证书
+2. 导入模块并启用
+3. 断开重连 VPN，开关一下定位服务
 
-## Some annoying notes encountered along the way
+详情见 `Shadowrocket/README.md`。
 
-- To do MITM on IOS, you need to do a weird song and dance. PacketTunnel -> Proxy -> Socks Server.
-- See [HACKS.md](./HACKS.md). Apple won't let you upload if you have a `.a` in your bundle
-- When you run out of memory in a service, you get SIGKILLED without notice or logs. I spent forever figuring out why I was randomly getting SIGKILLED. Answer is look at the Console app (wayyy to verbose)
+## iOS App 自行编译
 
-## Additional notes
+如果你有 Apple 开发者账号，也可以自己编译这个 app：
 
-This was partially vibe-coded, kinda, sorta. I wrote [apple-corelocation-experiments](https://github.com/acheong08/apple-corelocation-experiments) and [ios-mitm-demo](https://github.com/acheong08/ios-mitm-demo) by hand and told AI to combine them into 1. I'd say a solid 70% of code is reused and the AI didn't have to do any of the hard parts like reverse engineering. The objective was to test open source models (GLM-4.7 and MiniMax-M2.1) and how far they can go while also getting something useful out of it.
+```
+cd GoSpoofer && ./make.sh
+open location-spoofer.xcodeproj
+```
 
-Results were mixed. AI can definitely do UI, but whenever it hit a real roadblock, it'll hullucinate, delete all tests, and try to cheat its way to success. For example, it failed to re-implement my ARPC parsing correctly, and instead of referencing the correct implementation and fixing its own, it tried to delete everything in Go and try to rewrite in Swift. A lot of times, I had to step in and fix whatever it was stuck on before proceeding.
+在 Xcode 里选自己的开发者账号，跑手机上即可。
 
-IOS development is hell though and I can see how the lack of proper feedback for runtime issues can cause it to go crazy.
+## 拦截的域名
 
-~There are some **known bugs** even I can't figure out how to fix. For some reason, if you connect to another VPN, and try to connect to the location spoofer again, it will fail. You have to go to Settings > VPN and manually select the right profile before turning it on. Not enough references online for me to figure out. I am not an IOS developer and I do not have the time and energy to fix this. Workaround works well enough for my use case.~
+- `gs-loc.apple.com`
+- `gs-loc-cn.apple.com`
+- `bluedot.is.autonavi.com`
+- `bluedot.is.autonavi.com.gds.alibabadns.com`
 
-Update: Claude Opus 4.5 was able to figure it out in 2 tries after giving it a reference implementation by [Kean](https://github.com/kean/VPN/).
+## License
+
+AGPL-3.0
