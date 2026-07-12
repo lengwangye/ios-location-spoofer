@@ -1222,6 +1222,25 @@
     }
   }
 
+  function readLocalPanelConfig() {
+    if (typeof $persistentStore === "undefined" || !$persistentStore.read) {
+      return null;
+    }
+    try {
+      var raw = $persistentStore.read("location_spoofer_local_cfg");
+      if (!raw) {
+        return null;
+      }
+      var data = JSON.parse(raw);
+      if (!data || !Number.isFinite(Number(data.latitude)) || !Number.isFinite(Number(data.longitude))) {
+        return null;
+      }
+      return data;
+    } catch (err) {
+      return null;
+    }
+  }
+
   function fetchRemoteConfig(url, timeout, debug, callback) {
     if (!url || typeof $httpClient === "undefined" || !$httpClient.get) {
       callback(null, "http client unavailable");
@@ -1279,6 +1298,15 @@
     var configUrl = resolveConfigUrl(args);
     var debug = parseBoolean(cfg.debug, false);
     var address = String(args.address || "").trim();
+    var localCfg = readLocalPanelConfig();
+
+    if (localCfg) {
+      cfg = mergeConfig(cfg, localCfg);
+      configUrl = "";
+      if (debug) {
+        console.log("Location spoofer local panel config -> " + localCfg.latitude + "," + localCfg.longitude);
+      }
+    }
 
     applyAddressFromCache(cfg, address, debug);
 
