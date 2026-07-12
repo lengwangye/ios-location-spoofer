@@ -79,15 +79,15 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script>
 const $=id=>document.getElementById(id);let map,marker;
 function move(lat,lng){$('lat').value=Number(lat).toFixed(7);$('lng').value=Number(lng).toFixed(7);marker.setLatLng([lat,lng]);map.setView([lat,lng],Math.max(map.getZoom(),15));fetch('https://api.open-meteo.com/v1/elevation?latitude='+lat+'&longitude='+lng).then(r=>r.json()).then(j=>{if(j.elevation&&j.elevation.length)$('alt').value=Math.round(j.elevation[0])}).catch(()=>{});}
-fetch('/api/config').then(r=>r.json()).then(c=>{$('enabled').checked=c.enabled!==false;$('lat').value=c.latitude;$('lng').value=c.longitude;$('alt').value=c.altitude;$('hacc').value=c.horizontalAccuracy;$('vacc').value=c.verticalAccuracy;map=L.map('map').setView([c.latitude,c.longitude],15);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);marker=L.marker([c.latitude,c.longitude],{draggable:true}).addTo(map);map.on('click',e=>move(e.latlng.lat,e.latlng.lng));marker.on('dragend',()=>{const p=marker.getLatLng();move(p.lat,p.lng)});});
+fetch('/ios-location-spoofer/api/config').then(r=>r.json()).then(c=>{$('enabled').checked=c.enabled!==false;$('lat').value=c.latitude;$('lng').value=c.longitude;$('alt').value=c.altitude;$('hacc').value=c.horizontalAccuracy;$('vacc').value=c.verticalAccuracy;map=L.map('map').setView([c.latitude,c.longitude],15);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);marker=L.marker([c.latitude,c.longitude],{draggable:true}).addTo(map);map.on('click',e=>move(e.latlng.lat,e.latlng.lng));marker.on('dragend',()=>{const p=marker.getLatLng();move(p.lat,p.lng)});});
 $('searchBtn').onclick=()=>{const q=$('search').value.trim();if(!q)return;fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(q)).then(r=>r.json()).then(a=>{if(a[0])move(Number(a[0].lat),Number(a[0].lon));else $('msg').textContent='没有找到地址'}).catch(()=>$('msg').textContent='搜索失败')};
-$('save').onclick=()=>{const data={enabled:$('enabled').checked,latitude:Number($('lat').value),longitude:Number($('lng').value),altitude:Number($('alt').value),horizontalAccuracy:Number($('hacc').value),verticalAccuracy:Number($('vacc').value)};fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}).then(async r=>{const j=await r.json();if(!r.ok)throw Error(j.error||'保存失败');$('msg').textContent='已保存，重新开关系统定位后生效'}).catch(e=>$('msg').textContent=e.message)};
+$('save').onclick=()=>{const data={enabled:$('enabled').checked,latitude:Number($('lat').value),longitude:Number($('lng').value),altitude:Number($('alt').value),horizontalAccuracy:Number($('hacc').value),verticalAccuracy:Number($('vacc').value)};fetch('/ios-location-spoofer/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}).then(async r=>{const j=await r.json();if(!r.ok)throw Error(j.error||'保存失败');$('msg').textContent='已保存，重新开关系统定位后生效'}).catch(e=>$('msg').textContent=e.message)};
 </script></body></html>`;
 
   var url = new URL($request.url);
-  if (url.pathname === "/api/config" && $request.method === "GET") {
+  if (url.pathname === "/ios-location-spoofer/api/config" && $request.method === "GET") {
     json(200, readConfig());
-  } else if (url.pathname === "/api/config" && $request.method === "POST") {
+  } else if (url.pathname === "/ios-location-spoofer/api/config" && $request.method === "POST") {
     saveConfig();
   } else {
     response(200, "text/html; charset=utf-8", PAGE);
