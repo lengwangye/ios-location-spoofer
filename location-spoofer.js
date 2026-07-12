@@ -1241,6 +1241,25 @@
     }
   }
 
+  function markLocalPanelRead(config) {
+    if (!config || typeof $persistentStore === "undefined" || !$persistentStore.write) {
+      return;
+    }
+    try {
+      $persistentStore.write(
+        JSON.stringify({
+          ts: Date.now(),
+          enabled: config.enabled !== false,
+          latitude: Number(config.latitude),
+          longitude: Number(config.longitude)
+        }),
+        "location_spoofer_last_read"
+      );
+    } catch (err) {
+      // ignore status write failures
+    }
+  }
+
   function fetchRemoteConfig(url, timeout, debug, callback) {
     if (!url || typeof $httpClient === "undefined" || !$httpClient.get) {
       callback(null, "http client unavailable");
@@ -1300,14 +1319,6 @@
     var address = String(args.address || "").trim();
     var localCfg = readLocalPanelConfig();
 
-    if (localCfg) {
-      cfg = mergeConfig(cfg, localCfg);
-      configUrl = "";
-      if (debug) {
-        console.log("Location spoofer local panel config -> " + localCfg.latitude + "," + localCfg.longitude);
-      }
-    }
-
     applyAddressFromCache(cfg, address, debug);
 
     if (configUrl) {
@@ -1322,6 +1333,17 @@
               remoteCfg.longitude
           );
         }
+      }
+    }
+
+    // The on-device panel is an explicit user action and therefore has the
+    // highest priority over plugin arguments, address cache, and remote config.
+    if (localCfg) {
+      cfg = mergeConfig(cfg, localCfg);
+      configUrl = "";
+      markLocalPanelRead(localCfg);
+      if (debug) {
+        console.log("Location spoofer local panel config -> " + localCfg.latitude + "," + localCfg.longitude);
       }
     }
 
