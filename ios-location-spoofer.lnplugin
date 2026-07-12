@@ -28,6 +28,3 @@ hostname = gs-loc.apple.com, gs-loc-cn.apple.com, bluedot.is.autonavi.com, blued
 
 [Host]
 location.spoofer = 127.0.0.1
-4:#!openUrl=https://location.spoofer
-27:hostname = gs-loc.apple.com, gs-loc-cn.apple.com, bluedot.is.autonavi.com, bluedot.is.autonavi.com.gds.alibabadns.com, location.spoofer
-30:location.spoofer = 127.0.0.1
