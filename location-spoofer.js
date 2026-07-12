@@ -1780,7 +1780,31 @@
     donePassThrough();
   }
 
+  function writeRuntimeStatus(info, error) {
+    if (typeof $persistentStore === "undefined" || !$persistentStore.write) {
+      return;
+    }
+    try {
+      $persistentStore.write(
+        JSON.stringify({
+          ts: Date.now(),
+          success: !error,
+          wifiCount: Number((info && info.wifiCount) || 0),
+          cellCount: Number((info && info.cellCount) || 0),
+          kind: (info && info.kind) || "unknown",
+          latitude: info && info.targetLat != null ? Number(info.targetLat) : null,
+          longitude: info && info.targetLng != null ? Number(info.targetLng) : null,
+          error: error ? String(error).slice(0, 300) : ""
+        }),
+        "location_spoofer_runtime_status"
+      );
+    } catch (err) {
+      // ignore status write failures
+    }
+  }
+
   function doneSyntheticResponse(bytes, info) {
+    writeRuntimeStatus(info);
     var headers = headersWithBinaryBody({}, bytes.length);
     if (info && info.debug) {
       headers["X-Location-Spoofer-Wifi-Count"] = String(info.wifiCount);
@@ -1804,6 +1828,7 @@
   }
 
   function doneRewriteResponse(bytes, info) {
+    writeRuntimeStatus(info);
     var sourceHeaders = typeof $response !== "undefined" ? $response.headers : {};
     var headers = headersWithBinaryBody(sourceHeaders, bytes.length);
     if (info && info.debug) {
@@ -1871,6 +1896,7 @@
       wifiCount: responseResult.wifiCount,
       cellCount: responseResult.cellCount,
       debug: config.debug,
+      kind: responseResult.kind,
       targetLat: config.latitude,
       targetLng: config.longitude
     });
@@ -1967,9 +1993,13 @@
         doneSyntheticResponse(requestResult.response, {
           wifiCount: requestResult.wifiCount,
           cellCount: requestResult.cellCount,
-          debug: config.debug
+          debug: config.debug,
+          kind: "synthetic",
+          targetLat: config.latitude,
+          targetLng: config.longitude
         });
       } catch (err) {
+        writeRuntimeStatus(null, err.message);
         if (config.debug) {
           var diagBody = hasResponse ? messageBodyToBytes($response) : messageBodyToBytes($request);
           console.log("Location spoofer failed: " + err.message + " | bodyLen=" + (diagBody ? diagBody.length : 0) + " head=" + (diagBody ? hexPreview(diagBody, 32) : "<none>"));
